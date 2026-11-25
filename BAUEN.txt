@@ -1,0 +1,63 @@
+KnowledgeTree – Quellcode (by TheDragonas)
+===========================================
+
+Aufbau
+  main.go            Programmstart, interner Webserver, Einzelinstanz, Backup-/Speicher-API
+  store.go           Abgleich Gruppen/Seiten <-> Ordner im "Saves"-Ordner, Backups (Zeitplan, Aufbewahren),
+                     Papierkorb leeren, Bilder aufräumen
+  store_test.go      go test ./...  (Prüfungen für store.go)
+  window_windows.go  Programmfenster (Microsoft WebView2) + Fallbacks
+  web/               Oberfläche (HTML/CSS/JavaScript, wird in die .exe eingebettet)
+    js/store.js      Daten, Notizbuch-Struktur, Rückgängig/Wiederholen (100 Schritte), Autosave
+    js/canvas.js     Zeichenfläche: Textfelder, Bilder, Pakete, Verbindungen
+    js/draw.js       Zeichnen: Stifte, Radierer, Lasso, Formen, Lineal, Formerkennung
+    js/ribbon.js     Menüband (PowerPoint-Stil)
+    js/commands.js   alle Befehle + Textformatierung
+    js/sidebar.js    Navigation wie OneNote: Notizbücher/Abschnitte als Baum links, Seitenliste daneben
+    js/layout.js     dynamisches Layout: Handy, Tablet, jede Fenstergrösse (Schublade, Menüband einklappen, Finger)
+    js/main.js       Start, Tastenkürzel, Seitenversionen, Dialoge
+    js/backend-server.js / js/backend-browser.js   Speichern im Ordner bzw. im Browser
+    js/onenote.js    OneNote-Dateien lesen (.one/.onepkg, LZX/MSZIP, OneStore-Format)
+    js/onenote-import.js  OneNote-Import in Notizbücher, Abschnitte und Seiten
+    js/onenote-write.js   OneNote-Export (.one/.onetoc2/.onepkg schreiben, Beta)
+    js/export.js     Export-Dialog: PDF, Webseite (HTML), KnowledgeTree-Datei, OneNote
+    js/formula.js    Formeln (LaTeX-ähnliche Eingabe, Anzeige als MathML)
+    js/sheet-calc.js / js/sheet.js   Tabellen wie Excel (Formel-Engine bzw. Bedienung)
+    js/chart.js      Diagramme aus Tabellendaten
+    js/calc.js       Taschenrechner (TI-30X Plus MathPrint und Standard)
+    js/mathink.js / js/fotomath.js   Fotomath: Handschrift erkennen und ausrechnen
+    js/mathsteps.js / js/mathcas.js  Rechenweg; Werkzeuge wie Derive (Ableiten, Integrieren, Faktorisieren, LGS, Kurvendiskussion)
+    js/route.js      Verbindungen um Felder und Bilder herumführen
+    js/contrast.js   Schriftfarbe passend zum Hintergrund (automatisch hell/dunkel, lesbare Farben)
+    js/filepages.js  Dateien anhaengen und als Seiten-Bilder aufklappen (PDF, Office-Bilder)
+    js/ktfile.js     KnowledgeTree-Datei (Backup und Export, Browser und EXE gleich): ZIP im Format des Saves-Ordners,
+                     interaktive .html, .json, Backup-Ordner wie bei OneNote (Ordner je Notizbuch, Datei je Abschnitt)
+    js/settings.js   Einstellungen (Datei -> Einstellungen) und automatisches Backup im Browser
+    js/guide.js      Erste-Schritte-Seiten
+build_web.py         baut die Webseiten-Version als eine Datei: dist/index.html (verkleinert;
+                     python build_web.py --lesbar = mit Kommentaren und Einrückung)
+tests/               Prüfungen (node tests/<bereich>/<name>-test.js); tests/rar/unrar-wasm-bauen.sh baut den
+                     RAR-Entpacker (node-unrar-js) für Tests ohne Internet nach, tests/rar/rar5.js schreibt Test-RARs;
+                     tests/onenote/onecheck.js prüft OneNote-Dateien streng nach Spezifikation
+                     (node tests/onenote/onecheck.js datei.one datei.onetoc2 …)
+
+Webseiten-Version bauen (Python 3):
+  python build_web.py
+  -> dist/index.html auf GitHub Pages hochladen (speichert alles im Browser)
+
+Selbst bauen (Go 1.22 oder neuer, https://go.dev/dl/):
+  python build_web.py        (zuerst! die EXE bettet dist/index.html als Vorlage für interaktive Dateien ein)
+  go mod tidy
+  set GOOS=windows& set GOARCH=amd64& go build -trimpath -ldflags "-H windowsgui -s -w" -o KnowledgeTree.exe .
+
+Paket für Windows: Ordner "KnowledgeTree" mit KnowledgeTree.exe, LIESMICH.txt (schreibt die EXE beim Start
+selbst) und build\KnowledgeTree im Browser starten.bat – Saves\ und Cache\ legt die EXE beim ersten Start an.
+Update: nur KnowledgeTree.exe im bestehenden Ordner ersetzen, die Daten in Saves\ bleiben.
+
+Icon/Manifest neu erzeugen (optional):
+  go install github.com/akavel/rsrc@latest
+  rsrc -manifest build\kt.manifest -ico build\kt.ico -arch amd64 -o rsrc_windows_amd64.syso
+
+Entwickeln ohne neu zu bauen:
+  set KT_WEB_DIR=C:\Pfad\zum\web-Ordner
+  KnowledgeTree.exe --browser
