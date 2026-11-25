@@ -1,0 +1,36 @@
+// Windows-Ressourcen der EXE (seit 1.44): Icon, Manifest und Versionsangaben. Die Versionsangaben (Firma, Produkt,
+// Beschreibung, Copyright) machen die EXE für Windows Defender und SmartScreen nachvollziehbar – Programme ohne
+// solche Angaben werden von der „maschinellen“ Erkennung (…!ml) öfter fälschlich als verdächtig eingestuft.
+// Erzeugen: llvm-windres --target=pe-x86-64 -i build/kt.rc -o rsrc_windows_amd64.syso   (Version unten mitändern)
+#pragma code_page(65001)
+1 ICON "kt.ico"
+1 24 "kt.manifest"
+
+1 VERSIONINFO
+FILEVERSION     1,76,0,0
+PRODUCTVERSION  1,76,0,0
+FILEFLAGSMASK   0x3fL
+FILEFLAGS       0x0L
+FILEOS          0x40004L
+FILETYPE        0x1L
+FILESUBTYPE     0x0L
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "080704b0"
+    BEGIN
+      VALUE "CompanyName",      "TheDragonas"
+      VALUE "FileDescription",  "KnowledgeTree – Notizbuch und Wissensnetz"
+      VALUE "FileVersion",      "1.76.0.0"
+      VALUE "InternalName",     "KnowledgeTree"
+      VALUE "LegalCopyright",   "© 2026 TheDragonas"
+      VALUE "OriginalFilename", "KnowledgeTree.exe"
+      VALUE "ProductName",      "KnowledgeTree"
+      VALUE "ProductVersion",   "1.76"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0807, 1200
+  END
+END

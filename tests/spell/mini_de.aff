@@ -1,0 +1,35 @@
+SET UTF-8
+TRY esianrtolcdugmphbyfvkwzäöü
+COMPOUNDBEGIN x
+COMPOUNDMIDDLE y
+COMPOUNDEND z
+ONLYINCOMPOUND o
+COMPOUNDPERMITFLAG c
+COMPOUNDMIN 3
+FORBIDDENWORD !
+REP 2
+REP ss ß
+REP f ph
+
+SFX N Y 2
+SFX N 0 en [^e]
+SFX N 0 n e
+
+SFX S Y 2
+SFX S 0 s .
+SFX S 0 es [^s]
+
+SFX F Y 1
+SFX F 0 s/xoc .
+
+PFX L Y 4
+PFX L W w/yzoc W
+PFX L S s/yzoc S
+PFX L K k/yzoc K
+PFX L T t/yzoc T
+
+SFX V Y 4
+SFX V en e en
+SFX V en est en
+SFX V en et en
+SFX V en ete en

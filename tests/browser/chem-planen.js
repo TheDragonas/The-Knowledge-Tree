@@ -1,0 +1,73 @@
+'use strict';
+/* Browser-Test Planen (1.56): node tests/browser/chem-planen.js [url]
+ * Umschalter Zeichnen|Planen, Synthesewege zum Ziel, Weg öffnen, Reaktion ändern, Mengen, Schema in die Zeichnung,
+ * Edukt → Pfeil → Produkt erkennt den Weg. Bilder: /tmp/kt-plan-*.png */
+const { chromium } = require('playwright');
+const url = process.argv[2] || 'http://127.0.0.1:8800/index.html';
+(async () => {
+  const br = await chromium.launch();
+  const pg = await br.newPage({ viewport: { width: 1400, height: 1000 } });
+  const errs = [];
+  pg.on('pageerror', e => errs.push(e.message));
+  pg.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(m.text()); });
+  await pg.goto(url);
+  await pg.waitForFunction(() => typeof Chem !== 'undefined' && typeof ChemPlan !== 'undefined', null, { timeout: 20000 });
+  await pg.waitForTimeout(1200);
+  let ok = 0, bad = 0;
+  const check = (n, c, info) => { if (c) ok++; else { bad++; console.log('FALSCH', n, info || ''); } };
+  const load = async (smi) => { await pg.evaluate(() => Chem.setTab('analyse')); await pg.fill('.chem-import', smi); await pg.click('.chem-loadbtn'); await pg.waitForTimeout(250); await pg.evaluate(() => Chem.setTab('struktur')); await pg.waitForTimeout(200); };
+  await pg.evaluate(() => { try { localStorage.removeItem('kt-chem-opts'); } catch (e) { } Chem.open(null); });
+  await pg.waitForTimeout(300);
+  await load('CC(=O)Nc1ccc(O)cc1');
+  check('Umschalter Zeichnen | Planen', (await pg.$$eval('.chem-modeseg button', b => b.map(x => x.textContent).join('|'))) === 'Zeichnen|Planen');
+  await pg.click('.chem-modeseg button[data-mode="plan"]'); await pg.waitForTimeout(200);
+  check('Planen: Ziel erkannt', /Synthesewege zum Ziel/.test(await pg.$eval('.chem-side', s => s.textContent)));
+  check('Seitenleiste breiter', (await pg.$eval('.chem-side', s => s.getBoundingClientRect().width)) > 400);
+  await pg.click('.chem-pgo');
+  await pg.waitForFunction(() => document.querySelectorAll('.chem-pcard').length > 0, null, { timeout: 15000 });
+  const cards = await pg.$$eval('.chem-pcard', c => c.map(x => x.textContent));
+  check('Wege vorgeschlagen (≥ 3)', cards.length >= 3, cards.length);
+  check('Weg mit Amid aus 4-Aminophenol', cards.some(t => /Amid/.test(t) && /Aminophenol/.test(t)), cards.slice(0, 3).join(' || '));
+  await pg.screenshot({ path: '/tmp/kt-plan-liste.png' });
+  await pg.click('.chem-pcard'); await pg.waitForTimeout(300);
+  check('Weg geöffnet: Stufe mit Bild, Reaktion, Bedingungen, Mengen', await pg.$eval('.chem-pstep', s => !!s.querySelector('.chem-pfig svg') && !!s.querySelector('.chem-psel') && s.querySelectorAll('.chem-pcond input').length === 3 && s.querySelectorAll('.chem-ptab tr').length >= 3));
+  const nOpt = await pg.$$eval('.chem-pstep .chem-psel option', o => o.length);
+  check('Alternative Reaktionen wählbar', nOpt >= 3, nOpt);
+  const before = await pg.$eval('.chem-pstep .chem-pstep-h', h => h.textContent);
+  await pg.selectOption('.chem-pstep .chem-psel', { index: 1 }); await pg.waitForTimeout(250);
+  const after = await pg.$eval('.chem-pstep .chem-pstep-h', h => h.textContent);
+  check('Reaktion ändern wirkt', before !== after, before + ' → ' + after);
+  const m1 = await pg.$eval('.chem-ptab', t => t.textContent);
+  await pg.fill('.chem-pamt', '2'); await pg.selectOption('.chem-punit', 'mol'); await pg.waitForTimeout(250);
+  const m2 = await pg.$eval('.chem-ptab', t => t.textContent);
+  check('Ansatzgrösse ändert die Mengen (2 mol → g/kg)', m1 !== m2 && /g/.test(m2), m2.slice(0, 120));
+  await pg.screenshot({ path: '/tmp/kt-plan-weg.png' });
+  const nA = await pg.evaluate(() => Chem.E.mol.atoms.length);
+  await pg.click('text=Schema in die Zeichnung'); await pg.waitForTimeout(400);
+  const after2 = await pg.evaluate(() => ({ a: Chem.E.mol.atoms.length, arrows: (Chem.E.mol.objs || []).filter(o => o.t === 'arrow').length }));
+  check('Schema eingefügt (Moleküle + Pfeil mit Bedingungen)', after2.a > nA && after2.arrows >= 1, JSON.stringify(after2));
+  // Edukt → Produkt: neue Zeichnung Toluol → Ethylbenzoat
+  await pg.evaluate(() => { Chem.close(); Chem.open(null); }); await pg.waitForTimeout(300);
+  await pg.evaluate(() => {
+    const t = ChemSmiles.toMol('Cc1ccccc1'), p = ChemSmiles.toMol('CCOC(=O)c1ccccc1');
+    const clip = { atoms: [], bonds: [], objs: [] };
+    let nid = 1;
+    const put = (m, dx) => { const map = new Map(); for (const a of m.atoms) { const id = nid++; map.set(a.id, id); clip.atoms.push({ ...a, id, x: a.x + dx, y: a.y }); } for (const b of m.bonds) clip.bonds.push({ ...b, id: nid++, a: map.get(b.a), b: map.get(b.b) }); };
+    put(t, 0); put(p, 260);
+    clip.objs.push({ t: 'arrow', k: 'r', x1: 80, y1: 0, x2: 170, y2: 0, up: '', dn: '' });
+    Chem.insertClip(clip); Chem.E.sel.clear(); Chem.renderSide();
+  });
+  await pg.waitForTimeout(300);
+  check('Weg Edukt → Produkt erkannt', /Weg: Edukt → Produkt/.test(await pg.$eval('.chem-side', s => s.textContent)));
+  await pg.click('.chem-pgo');
+  await pg.waitForFunction(() => document.querySelectorAll('.chem-pcard').length > 0, null, { timeout: 15000 });
+  const w = await pg.$eval('.chem-plist', l => l.textContent);
+  check('Weg gefunden (Oxidation → Veresterung, ✓ Edukt)', /Seitenketten-Oxidation/.test(w) && /✓ Edukt/.test(w), w.slice(0, 200));
+  await pg.screenshot({ path: '/tmp/kt-plan-route.png' });
+  await pg.click('.chem-modeseg button[data-mode="draw"]'); await pg.waitForTimeout(200);
+  check('zurück zu Zeichnen: Infos wie bisher', !(await pg.$('.chem-pgo')) && (await pg.$eval('.chem-side', s => s.getBoundingClientRect().width)) < 330);
+  check('keine Fehler in der Konsole', !errs.length, errs.slice(0, 3).join(' | '));
+  console.log(`${ok} von ${ok + bad} Browser-Prüfungen bestanden (Planen)`);
+  await br.close();
+  process.exitCode = bad ? 1 : 0;
+})();

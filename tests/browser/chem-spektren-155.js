@@ -1,0 +1,76 @@
+'use strict';
+/* Browser-Test Spektren 1.55: node tests/browser/chem-spektren-155.js [url]
+ * NMR: Integral standardmässig aus, Striche an (beides umschaltbar und gemerkt), Buchstaben + Strukturbild;
+ * MS: Bruchstücke als Strukturen, Abbruchfolge, Klick auf Peak; IR: Carbonyl nach Art. Bilder nach /tmp/kt-sp155-*.png */
+const { chromium } = require('playwright');
+const url = process.argv[2] || 'http://127.0.0.1:8800/index.html';
+(async () => {
+  const br = await chromium.launch();
+  const pg = await br.newPage({ viewport: { width: 1300, height: 1000 } });
+  const errs = [];
+  pg.on('pageerror', e => errs.push(e.message));
+  pg.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(m.text()); });
+  await pg.goto(url);
+  await pg.waitForFunction(() => typeof Chem !== 'undefined' && typeof ChemProps !== 'undefined', null, { timeout: 20000 });
+  await pg.waitForTimeout(1200);
+  let ok = 0, bad = 0;
+  const check = (n, c, info) => { if (c) ok++; else { bad++; console.log('FALSCH', n, info || ''); } };
+  const load = async (smi) => { await pg.evaluate(() => Chem.setTab('analyse')); await pg.fill('.chem-import', smi); await pg.click('.chem-loadbtn'); await pg.waitForTimeout(250); await pg.evaluate(() => Chem.setTab('analyse')); await pg.waitForTimeout(150); };
+  await pg.evaluate(() => { try { localStorage.removeItem('kt-chem-opts'); } catch (e) { } Chem.open(null); });
+  await pg.waitForTimeout(300);
+  await load('CC(C)Cc1ccc(cc1)C(C)C(=O)O');
+  await pg.click('.chem-specseg button[data-k="nmr"]'); await pg.waitForTimeout(200);
+  const svgTxt = () => pg.$eval('.chem-specsvg svg', s => s.outerHTML);
+  let h = await svgTxt();
+  check('Integral standardmässig aus', !/#2b8a3e/.test(h));
+  check('Striche standardmässig an', /stroke-width=".6" opacity=".45"/.test(h));
+  const togs = await pg.$$eval('.chem-nmrtogs input', x => x.map(i => i.checked));
+  check('Schalter Striche ✓ / Integral ✗', togs.join() === 'true,false', togs.join());
+  check('Strukturbild mit Buchstaben', await pg.$eval('.chem-assign-box', b => { const t = [...b.querySelectorAll('text')].map(x => x.textContent); return !!b.querySelector('svg') && t.includes('a') && t.includes('h'); }));
+  check('Tabelle mit Buchstaben a …', (await pg.$$eval('.chem-nmrtab td:first-child', t => t.map(x => x.textContent).join(''))).startsWith('abc'));
+  await pg.screenshot({ path: '/tmp/kt-sp155-nmr.png' });
+  await pg.click('.chem-nmrtogs label:nth-child(2) input'); await pg.waitForTimeout(150);
+  await pg.click('.chem-nmrtogs label:nth-child(1) input'); await pg.waitForTimeout(150);
+  h = await svgTxt();
+  check('Integral eingeschaltet, Striche aus', /#2b8a3e/.test(h) && !/stroke-width=".6" opacity=".45"/.test(h));
+  await pg.evaluate(() => { Chem.close(); Chem.open(null); }); await pg.waitForTimeout(300);
+  await load('CCOC(C)=O');
+  await pg.click('.chem-specseg button[data-k="nmr"]'); await pg.waitForTimeout(200);
+  check('Schalter gemerkt', (await pg.$$eval('.chem-nmrtogs input', x => x.map(i => i.checked))).join() === 'false,true');
+  await pg.click('.chem-nmrtogs label:nth-child(1) input'); await pg.click('.chem-nmrtogs label:nth-child(2) input'); await pg.waitForTimeout(100);
+  // MS
+  await load('CC(=O)c1ccccc1');
+  await pg.click('.chem-specseg button[data-k="ms"]'); await pg.waitForTimeout(300);
+  check('Kern-Auswahl nur im NMR-Reiter', await pg.$eval('.chem-nmrsel', x => x.closest('label').hidden));
+  const opts = await pg.$$eval('.chem-mssel option', o => o.map(x => x.textContent));
+  check('MS-Auswahlfeld mit Namen', opts.some(t => /m\/z 105 · Benzoyl-Kation/.test(t)) && opts.some(t => /m\/z 77 · Phenyl-Kation/.test(t)) && opts.some(t => /m\/z 43 · Acetyl-Kation/.test(t)), opts.join(' | '));
+  check('Vorschau mit zwei Bildern', await pg.$eval('.chem-msprev', c => c.querySelectorAll('svg').length === 2));
+  check('Abbruchfolge 120 → 105', /m\/z 120[\s\S]*m\/z 105/.test(await pg.$eval('.chem-mschain', c => c.textContent)));
+  await pg.selectOption('.chem-mssel', '77'); await pg.waitForTimeout(150);
+  const chain = await pg.$eval('.chem-mschain', c => ({ t: c.textContent, n: c.querySelectorAll('.chem-mschain-step').length }));
+  check('Abbruchfolge 120 → 105 → 77 mit − CO', chain.n === 3 && /− CO/.test(chain.t), JSON.stringify(chain));
+  await pg.$eval('.chem-specsvg svg', s => s.scrollIntoView({ block: 'center' }));
+  const bx = await pg.$eval('.chem-specsvg svg', s => { const r = s.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, x0: +s.dataset.x0, x1: +s.dataset.x1 }; });
+  const X = (v) => bx.x + (44 + (v - bx.x0) / (bx.x1 - bx.x0) * (560 - 44 - 14)) * bx.w / 560;
+  await pg.mouse.click(X(43), bx.y + bx.h * 0.6); await pg.waitForTimeout(200);
+  check('Klick auf Peak 43 wählt das Bruchstück', await pg.inputValue('.chem-mssel') === '43');
+  await pg.screenshot({ path: '/tmp/kt-sp155-ms.png', fullPage: false });
+  // Bruchstück in die Zeichnung: Benzoyl-Kation mit Ladung
+  await pg.selectOption('.chem-mssel', '105'); await pg.waitForTimeout(100);
+  const n0 = await pg.evaluate(() => Chem.E.mol.atoms.length);
+  await pg.click('.chem-msins'); await pg.waitForTimeout(300);
+  const ins = await pg.evaluate(() => { const E = Chem.E; const sel = E.mol.atoms.filter(a => E.sel.has('a:' + a.id)); const an = ChemMol.analyze({ atoms: sel, bonds: E.mol.bonds.filter(b => E.sel.has('b:' + b.id)), nid: 1 }); return { tab: E.tab, n: E.mol.atoms.length, q: sel.reduce((t, a) => t + (a.q || 0), 0), f: an.hill.text }; });
+  check('Bruchstück eingefügt: C₇H₅O⁺ im Zeichnen-Reiter', ins.tab === 'struktur' && ins.n === n0 + 8 && ins.q === 1 && /^C7H5O/.test(ins.f), JSON.stringify(ins));
+  await pg.screenshot({ path: '/tmp/kt-sp155-ins.png' });
+  await pg.keyboard.press('Control+z'); await pg.waitForTimeout(150);
+  check('Strg+Z nimmt es zurück', await pg.evaluate(() => Chem.E.mol.atoms.length) === n0);
+  await pg.evaluate(() => Chem.setTab('analyse')); await pg.waitForTimeout(200);
+  // IR
+  await pg.click('.chem-specseg button[data-k="ir"]'); await pg.waitForTimeout(300);
+  check('IR: C=O Keton (konjugiert) ≈ 1687', /1687 cm⁻¹C=O Keton \(konjugiert\)/.test(await pg.$eval('.chem-spectab', t => t.textContent)));
+  check('IR: monosubstituiertes Benzol', /monosubstituiert/.test(await pg.$eval('.chem-spectab', t => t.textContent)));
+  check('keine Fehler in der Konsole', !errs.length, errs.slice(0, 3).join(' | '));
+  console.log(`${ok} von ${ok + bad} Browser-Prüfungen bestanden (Spektren 1.55/1.56)`);
+  await br.close();
+  process.exitCode = bad ? 1 : 0;
+})();

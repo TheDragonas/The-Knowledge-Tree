@@ -1,0 +1,50 @@
+CC(C)O => propan-2-ol
+CC(=O)O => ethanoic acid
+CCOC(C)=O => ethyl ethanoate
+CC(=C)C=C => 2-methylbuta-1,3-diene
+C=CC#C => but-1-en-3-yne
+C[C@@H](C(=O)O)N => (2S)-2-aminopropanoic acid
+CC(=O)[O-].[Na+] => sodium ethanoate
+CN(C)C=O => N,N-dimethylmethanamide
+Oc1ccccc1O => benzene-1,2-diol
+OCC(O)CO => propane-1,2,3-triol
+OCCO => ethane-1,2-diol
+OC(=O)C1CCCCC1 => cyclohexanecarboxylic acid
+OC(=O)CC(O)(CC(=O)O)C(=O)O => 2-hydroxypropane-1,2,3-tricarboxylic acid
+CC(Cl)=O => ethanoyl chloride
+CC(=O)CC(C)=O => pentane-2,4-dione
+C=CC=O => prop-2-enal
+OC(=O)CCC(=O)O => butanedioic acid
+CC#N => ethanenitrile
+CCN => ethanamine
+CC(C)=O => propan-2-one
+NCCN => ethane-1,2-diamine
+C=CC(=O)O => prop-2-enoic acid
+OC(=O)/C=C/C(=O)O => (2E)-but-2-enedioic acid
+CCOC(=O)c1ccc(N)cc1 => ethyl 4-aminobenzoate
+Cc1ccccc1 => methylbenzene
+CC(C)c1ccccc1 => (propan-2-yl)benzene
+OC(=O)c1ccccc1 => benzoic acid
+CC(=O)Oc1ccccc1C(=O)O => 2-(acetyloxy)benzoic acid
+CC1=CC[C@@H](CC1)C(=C)C => (4R)-1-methyl-4-(prop-1-en-2-yl)cyclohex-1-ene
+CC(C)=CCC/C(C)=C/CO => (2E)-3,7-dimethylocta-2,6-dien-1-ol
+CCCCCCCC/C=C\CCCCCCCC(=O)O => (9Z)-octadec-9-enoic acid
+C=CC#N => prop-2-enenitrile
+C=CC(O)C => but-3-en-2-ol
+C#CCO => prop-2-yn-1-ol
+C1CC=CCC1 => cyclohexene
+OC1CC=CCC1 => cyclohex-3-en-1-ol
+ClC(Cl)Cl => trichloromethane
+CCOCC => ethoxyethane
+Nc1ccccc1 => aniline
+Oc1ccccc1 => phenol
+C=Cc1ccccc1 => ethenylbenzene
+CC(=O)Nc1ccc(O)cc1 => N-(4-hydroxyphenyl)ethanamide
+CC(N)=O => ethanamide
+FC(F)=C(F)F => tetrafluoroethene
+CCCCC(CC)CO => 2-ethylhexan-1-ol
+O=C1C=CC(=O)C=C1 => cyclohexa-2,5-diene-1,4-dione
+CC(=O)C=C => but-3-en-2-one
+OC(=O)C(Cl)(Cl)Cl => 2,2,2-trichloroethanoic acid
+CS(=O)(=O)O => methanesulfonic acid
+CCS => ethanethiol
